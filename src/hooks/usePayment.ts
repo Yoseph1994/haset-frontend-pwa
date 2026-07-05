@@ -33,3 +33,17 @@ export function useVerifyPayment() {
     },
   })
 }
+
+/** Dev-mode mock Chapa completion — finalizes the payment and refreshes contracts/offers. */
+export function useMockCompletePayment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => paymentsApi.mockCompletePayment(id),
+    onSuccess: (payment) => {
+      queryClient.setQueryData(['payments', payment.id], payment)
+      queryClient.invalidateQueries({ queryKey: ['contracts'] })
+      queryClient.invalidateQueries({ queryKey: ['offers'] })
+    },
+  })
+}

@@ -168,6 +168,8 @@ export interface Offer {
   hirer?: User
   employee?: User
   job?: JobPosting
+  /** Draft contract created when the offer was accepted (for review/agree/pay). */
+  contract_id?: string | null
   agreed_salary: string
   salary_currency: string
   platform_fee_pct: string
@@ -187,6 +189,7 @@ export type ContractStatus = 'awaiting_payment' | 'active' | 'completed' | 'term
 
 export interface Contract {
   id: string
+  reference: string | null
   hirer_id: string
   employee_id: string
   job_id: string | null
@@ -205,10 +208,42 @@ export interface Contract {
   actual_end_date: string | null
   terms_summary: string | null
   status: ContractStatus
+  employee_agreed_at: string | null
+  hirer_agreed_at: string | null
+  both_agreed: boolean
+  has_pdf: boolean
   termination_reason: string | null
   terminated_at: string | null
   created_at: string
   updated_at: string
+}
+
+/** Structured, human-readable contract terms for the on-screen review + PDF. */
+export interface ContractTerms {
+  reference: string | null
+  parties: {
+    hirer: { name: string | null; company: string | null; email: string | null }
+    employee: { name: string | null; email: string | null }
+  }
+  job: { title: string; description: string | null; employment_type: string }
+  dates: { start: string | null; end: string | null }
+  compensation: {
+    agreed_salary: number
+    currency: string
+    platform_fee_pct: number
+    platform_fee_amount: number
+    breakdown: string
+  }
+  hirer_responsibilities: string[]
+  employee_responsibilities: string[]
+  termination: string
+  dispute_resolution: string
+  platform_liability: string
+  agreement: {
+    employee_agreed_at: string | null
+    hirer_agreed_at: string | null
+    both_agreed: boolean
+  }
 }
 
 export interface ContractEvent {
@@ -249,6 +284,8 @@ export interface Payment {
   status: PaymentStatus
   chapa_tx_ref: string
   chapa_checkout_url: string | null
+  /** When true, show the in-app mock Chapa popup instead of redirecting to real checkout. */
+  mock: boolean
   paid_at: string | null
   failed_reason: string | null
   created_at: string

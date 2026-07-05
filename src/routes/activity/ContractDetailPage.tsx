@@ -16,8 +16,17 @@ import {
   IonToolbar,
   useIonAlert,
 } from '@ionic/react'
+import { downloadOutline } from 'ionicons/icons'
+import { IonIcon } from '@ionic/react'
 import { useState } from 'react'
-import { useCompleteContract, useContract, useContractEvents, useTerminateContract } from '@/hooks/useContracts'
+import { useHistory } from 'react-router-dom'
+import {
+  useCompleteContract,
+  useContract,
+  useContractEvents,
+  useDownloadContractPdf,
+  useTerminateContract,
+} from '@/hooks/useContracts'
 import { usePayment } from '@/hooks/usePayment'
 import { useUserRatings } from '@/hooks/useRatings'
 import { useRouteParams } from '@/hooks/useRouteParams'
@@ -35,11 +44,13 @@ export function ContractDetailPage() {
   const user = useSessionStore((s) => s.user)
   const isHirer = user?.role === 'hirer'
 
+  const history = useHistory()
   const { data: contract, isLoading, isError, refetch } = useContract(id)
   const { data: events } = useContractEvents(id)
   const { data: payment } = usePayment(contract?.payment_id)
   const complete = useCompleteContract()
   const terminate = useTerminateContract()
+  const downloadPdf = useDownloadContractPdf()
 
   const otherPartyId = isHirer ? contract?.employee_id : contract?.hirer_id
   const { data: ratingsOfOtherParty } = useUserRatings(otherPartyId ?? '')
@@ -89,12 +100,25 @@ export function ContractDetailPage() {
 
         {contract && (
           <>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
               <StatusBadge status={contract.status} />
               <IonChip>{contract.employment_type}</IonChip>
             </div>
 
+            {contract.reference && (
+              <IonText color="medium">
+                <p style={{ margin: '0 0 8px', fontWeight: 600, letterSpacing: 0.5 }}>Contract #{contract.reference}</p>
+              </IonText>
+            )}
+
             {contract.job && <h2>{contract.job.title}</h2>}
+
+            {/* Draft still awaiting the two-sided agreement + payment. */}
+            {contract.status === 'awaiting_payment' && (
+              <IonButton expand="block" onClick={() => history.push(`/app/contracts/${id}/review`)}>
+                Review &amp; agree to contract
+              </IonButton>
+            )}
 
             <IonList inset>
               <IonItem>
@@ -184,6 +208,16 @@ export function ContractDetailPage() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+              {contract.has_pdf && (
+                <IonButton
+                  expand="block"
+                  disabled={downloadPdf.isPending}
+                  onClick={() => downloadPdf.mutate({ id, reference: contract.reference })}
+                >
+                  <IonIcon slot="start" icon={downloadOutline} />
+                  {downloadPdf.isPending ? 'Preparing…' : 'Download Contract PDF'}
+                </IonButton>
+              )}
               {canComplete && (
                 <IonButton expand="block" disabled={complete.isPending} onClick={() => complete.mutate(id)}>
                   Mark complete

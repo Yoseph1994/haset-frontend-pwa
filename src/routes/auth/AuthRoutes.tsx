@@ -1,5 +1,6 @@
 import { IonRouterOutlet } from '@ionic/react'
 import { Redirect, Route, Switch } from 'react-router-dom'
+import { LandingPage } from './LandingPage'
 import { LoginPage } from './LoginPage'
 import { RegisterPage } from './RegisterPage'
 import { ForgotPasswordPage } from './ForgotPasswordPage'
@@ -9,11 +10,12 @@ export function AuthRoutes() {
   return (
     <IonRouterOutlet>
       <Switch>
+        <Route exact path="/" component={LandingPage} />
         <Route exact path="/login" component={LoginPage} />
         <Route exact path="/register" component={RegisterPage} />
         <Route exact path="/forgot-password" component={ForgotPasswordPage} />
         <Route exact path="/reset-password" component={ResetPasswordPage} />
-        <Redirect to="/login" />
+        <Redirect to="/" />
       </Switch>
     </IonRouterOutlet>
   )

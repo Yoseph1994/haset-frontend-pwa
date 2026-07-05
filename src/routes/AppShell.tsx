@@ -19,6 +19,7 @@ import { ActivityListPage } from './activity/ActivityListPage'
 import { OfferDetailPage } from './activity/OfferDetailPage'
 import { ContractsListPage } from './contracts/ContractsListPage'
 import { ContractDetailPage } from './activity/ContractDetailPage'
+import { ContractReviewPage } from './contracts/ContractReviewPage'
 import { PaymentReturnPage } from './activity/PaymentReturnPage'
 import { NotificationListPage } from './notifications/NotificationListPage'
 import { MyProfilePage } from './profile/MyProfilePage'
@@ -43,6 +44,8 @@ export function AppShell() {
         <Route exact path="/app/employees/:id" component={EmployeePublicProfilePage} />
 
         <Route exact path="/app/contracts" component={ContractsListPage} />
+        {/* Review + two-sided agreement screen (before payment) */}
+        <Route exact path="/app/contracts/:id/review" component={ContractReviewPage} />
         <Route exact path="/app/contracts/:id" component={ContractDetailPage} />
 
         {/* Requests + Offers list, reached from dashboard action cards (not a bottom tab) */}

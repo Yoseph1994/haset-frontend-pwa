@@ -18,7 +18,6 @@ import {
 import { useHistory } from 'react-router-dom'
 import { useAcceptOffer, useOffer, useRejectOffer } from '@/hooks/useOffers'
 import { useContracts } from '@/hooks/useContracts'
-import { useInitiatePayment } from '@/hooks/usePayment'
 import { useRouteParams } from '@/hooks/useRouteParams'
 import { useVerification } from '@/hooks/useVerification'
 import { useSessionStore } from '@/store/session'
@@ -26,7 +25,6 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { VerificationBanner } from '@/components/VerificationBanner'
 import { formatDate, formatDateTime } from '@/utils/format'
-import { launchChapaCheckout } from '@/utils/payment'
 import { ApiError } from '@/api/client'
 
 export function OfferDetailPage() {
@@ -41,18 +39,24 @@ export function OfferDetailPage() {
   const { data: contracts } = useContracts()
   const accept = useAcceptOffer()
   const reject = useRejectOffer()
-  const initiatePayment = useInitiatePayment()
 
   const canAct = isEmployee && offer?.status === 'pending' && isApproved
-  // Once a contract exists for this offer, the fee has been paid — don't re-offer payment.
+  // The draft contract created when the offer was accepted — both parties
+  // review + agree there, and the hirer pays from there.
   const contractForOffer = contracts?.data.find((c) => c.offer_id === id)
-  const needsPayment = isHirer && offer?.status === 'accepted' && !contractForOffer
-  const mutationError = accept.error ?? reject.error ?? initiatePayment.error
+  const contractId = offer?.contract_id ?? contractForOffer?.id ?? null
+  const contractActive = contractForOffer?.status === 'active'
+  // Hirer must review + agree + pay on the contract screen once the offer is accepted.
+  const needsPayment = isHirer && offer?.status === 'accepted' && !contractActive
+  const mutationError = accept.error ?? reject.error
 
-  const handlePay = () => {
-    initiatePayment.mutate(id, {
-      onSuccess: (payment) => {
-        void launchChapaCheckout(payment)
+  const goToReview = (cid: string) => history.push(`/app/contracts/${cid}/review`)
+
+  const handleAccept = () => {
+    accept.mutate(id, {
+      // Straight into the contract review + agreement screen.
+      onSuccess: (updated) => {
+        if (updated.contract_id) goToReview(updated.contract_id)
       },
     })
   }
@@ -160,8 +164,8 @@ export function OfferDetailPage() {
 
             {canAct && (
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <IonButton expand="block" disabled={accept.isPending} onClick={() => accept.mutate(id)}>
-                  Accept
+                <IonButton expand="block" disabled={accept.isPending} onClick={handleAccept}>
+                  {accept.isPending ? <IonSpinner name="dots" /> : 'Accept & Review Contract'}
                 </IonButton>
                 <IonButton expand="block" color="danger" fill="outline" disabled={reject.isPending} onClick={handleReject}>
                   Reject
@@ -169,33 +173,33 @@ export function OfferDetailPage() {
               </div>
             )}
 
+            {/* Employee has accepted — send them to review/agree (or the waiting state). */}
+            {isEmployee && offer.status === 'accepted' && !contractActive && contractId && (
+              <IonButton expand="block" onClick={() => goToReview(contractId)}>
+                Review contract
+              </IonButton>
+            )}
+
+            {/* Hirer: review the agreed terms and pay to activate. */}
             {needsPayment && (
               <>
                 <IonText color="medium">
                   <p>
-                    The worker accepted this offer. Pay the platform fee of{' '}
+                    The worker accepted this offer. Review the contract, agree to the terms, and pay the platform fee of{' '}
                     <strong>
                       {Number(offer.platform_fee_amount).toLocaleString()} {offer.salary_currency}
                     </strong>{' '}
-                    to activate the contract.
+                    to activate it.
                   </p>
                 </IonText>
-                <IonButton expand="block" disabled={initiatePayment.isPending} onClick={handlePay}>
-                  {initiatePayment.isPending ? (
-                    <IonSpinner name="dots" />
-                  ) : (
-                    `Pay ${Number(offer.platform_fee_amount).toLocaleString()} ${offer.salary_currency}`
-                  )}
+                <IonButton expand="block" disabled={!contractId} onClick={() => contractId && goToReview(contractId)}>
+                  Review &amp; Pay
                 </IonButton>
               </>
             )}
 
-            {contractForOffer && (
-              <IonButton
-                expand="block"
-                fill="outline"
-                onClick={() => history.replace(`/app/contracts/${contractForOffer.id}`)}
-              >
+            {contractActive && contractId && (
+              <IonButton expand="block" fill="outline" onClick={() => history.replace(`/app/contracts/${contractId}`)}>
                 View contract
               </IonButton>
             )}

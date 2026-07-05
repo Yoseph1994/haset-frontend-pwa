@@ -14,3 +14,8 @@ export function initiatePayment(offerId: string) {
 export function verifyPayment(id: string) {
   return unwrap<Payment>(apiClient.post(`/payments/${id}/verify`))
 }
+
+/** Dev-mode only: complete a payment via the mock Chapa popup (no real gateway). Returns the finalized payment. */
+export function mockCompletePayment(id: string) {
+  return unwrap<Payment>(apiClient.post(`/payments/${id}/mock-complete`))
+}

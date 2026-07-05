@@ -1,5 +1,7 @@
 import {
+  IonBackButton,
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonList,
@@ -12,9 +14,9 @@ import {
 } from '@ionic/react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { useLocation } from 'react-router-dom'
 import { z } from 'zod'
 import { FormTextField } from '@/components/form/FormTextField'
-import { FormSelectField } from '@/components/form/FormSelectField'
 import { useRegister } from '@/hooks/useAuth'
 import { ApiError } from '@/api/client'
 
@@ -36,9 +38,23 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
+function useInitialRole(): 'employee' | 'hirer' | undefined {
+  const { search } = useLocation()
+  const role = new URLSearchParams(search).get('role')
+  return role === 'employee' || role === 'hirer' ? role : undefined
+}
+
 export function RegisterPage() {
   const registerMutation = useRegister()
-  const { control, handleSubmit } = useForm<FormValues>({
+  const initialRole = useInitialRole()
+
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
@@ -46,9 +62,11 @@ export function RegisterPage() {
       phone_number: '+251',
       password: '',
       password_confirmation: '',
-      role: undefined,
+      role: initialRole,
     },
   })
+
+  const role = watch('role')
 
   const onSubmit = (values: FormValues) => {
     registerMutation.mutate({ ...values, preferred_language: 'en' })
@@ -58,22 +76,40 @@ export function RegisterPage() {
     <IonPage>
       <IonHeader>
         <IonToolbar>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/" />
+          </IonButtons>
           <IonTitle>Create your account</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
+        <style>{registerStyles}</style>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <IonList inset>
-            <FormSelectField
-              control={control}
-              name="role"
-              label="I am a..."
-              placeholder="Choose one"
-              options={[
-                { value: 'employee', label: 'Job seeker (Employee)' },
-                { value: 'hirer', label: 'Hirer / Employer' },
-              ]}
+          {/* Role selection — big cards, not a dropdown */}
+          <p className="reg-role-label">I want to…</p>
+          <div className="reg-role-cards">
+            <RoleCard
+              active={role === 'hirer'}
+              emoji="🧑‍💼"
+              title="Hire workers"
+              subtitle="Post jobs, invite workers, and manage contracts."
+              onClick={() => setValue('role', 'hirer', { shouldValidate: true })}
             />
+            <RoleCard
+              active={role === 'employee'}
+              emoji="🛠️"
+              title="Find work"
+              subtitle="Browse jobs, apply, and get hired."
+              onClick={() => setValue('role', 'employee', { shouldValidate: true })}
+            />
+          </div>
+          {errors.role && (
+            <IonText color="danger">
+              <p className="reg-role-error">{errors.role.message}</p>
+            </IonText>
+          )}
+
+          <IonList inset>
             <FormTextField control={control} name="name" label="Full name" autocomplete="name" />
             <FormTextField control={control} name="email" label="Email" type="email" autocomplete="email" />
             <FormTextField control={control} name="phone_number" label="Phone number" type="tel" />
@@ -118,3 +154,50 @@ export function RegisterPage() {
     </IonPage>
   )
 }
+
+function RoleCard({
+  active,
+  emoji,
+  title,
+  subtitle,
+  onClick,
+}: {
+  active: boolean
+  emoji: string
+  title: string
+  subtitle: string
+  onClick: () => void
+}) {
+  return (
+    <button type="button" className={`reg-role-card ${active ? 'is-active' : ''}`} onClick={onClick}>
+      <span className="reg-role-emoji">{emoji}</span>
+      <span className="reg-role-title">{title}</span>
+      <span className="reg-role-sub">{subtitle}</span>
+      {active && <span className="reg-role-tick">✓</span>}
+    </button>
+  )
+}
+
+const registerStyles = `
+.reg-role-label { font-size: 14px; font-weight: 600; color: var(--ion-color-medium); margin: 4px 4px 10px; }
+.reg-role-cards { display: flex; gap: 12px; }
+.reg-role-card {
+  position: relative; flex: 1; text-align: left; background: var(--ion-color-light);
+  border: 2px solid transparent; border-radius: 16px; padding: 14px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.reg-role-card.is-active { border-color: #12B76A; background: #ecfdf3; }
+.reg-role-emoji { font-size: 26px; }
+.reg-role-title { font-weight: 700; font-size: 15px; }
+.reg-role-sub { font-size: 12.5px; color: var(--ion-color-medium); line-height: 1.4; }
+.reg-role-tick {
+  position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%;
+  background: #12B76A; color: #fff; font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.reg-role-error { margin: 8px 4px 0; font-size: 13px; }
+
+@media (prefers-color-scheme: dark) {
+  .reg-role-card.is-active { background: rgba(18,183,106,0.16); }
+}
+`
