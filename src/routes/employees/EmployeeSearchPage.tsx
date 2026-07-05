@@ -3,6 +3,7 @@ import {
   IonChip,
   IonContent,
   IonHeader,
+  IonInput,
   IonItem,
   IonLabel,
   IonList,
@@ -17,13 +18,20 @@ import { useState } from 'react'
 import { useEmployeeSearch } from '@/hooks/useEmployees'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorBanner } from '@/components/ErrorBanner'
+import type { EmployeeSearchFilters } from '@/api/employees'
 
 export function EmployeeSearchPage() {
   const history = useHistory()
   const [jobCategory, setJobCategory] = useState('')
-  const { data, isLoading, isError, refetch } = useEmployeeSearch(
-    jobCategory ? { job_category: jobCategory, sort: 'rating_desc' } : { sort: 'rating_desc' },
-  )
+  const [salaryMin, setSalaryMin] = useState('')
+  const [salaryMax, setSalaryMax] = useState('')
+
+  const filters: EmployeeSearchFilters = { sort: 'rating_desc' }
+  if (jobCategory) filters.job_category = jobCategory
+  if (salaryMin) filters.salary_min = Number(salaryMin)
+  if (salaryMax) filters.salary_max = Number(salaryMax)
+
+  const { data, isLoading, isError, refetch } = useEmployeeSearch(filters)
 
   return (
     <IonPage>
@@ -38,6 +46,26 @@ export function EmployeeSearchPage() {
             onIonInput={(e) => setJobCategory(e.detail.value ?? '')}
             debounce={400}
           />
+        </IonToolbar>
+        <IonToolbar>
+          <div style={{ display: 'flex', gap: 8, padding: '0 12px 8px' }}>
+            <IonInput
+              fill="outline"
+              type="number"
+              placeholder="Min salary (ETB)"
+              value={salaryMin}
+              onIonInput={(e) => setSalaryMin(e.detail.value ?? '')}
+              style={{ flex: 1 }}
+            />
+            <IonInput
+              fill="outline"
+              type="number"
+              placeholder="Max salary (ETB)"
+              value={salaryMax}
+              onIonInput={(e) => setSalaryMax(e.detail.value ?? '')}
+              style={{ flex: 1 }}
+            />
+          </div>
         </IonToolbar>
       </IonHeader>
       <IonContent>
@@ -59,6 +87,14 @@ export function EmployeeSearchPage() {
                 <p>
                   {profile.job_category} · {profile.city}
                 </p>
+                {(profile.expected_salary_min || profile.expected_salary_max) && (
+                  <p>
+                    Expects: {profile.expected_salary_min ? Number(profile.expected_salary_min).toLocaleString() : '—'}
+                    {' - '}
+                    {profile.expected_salary_max ? Number(profile.expected_salary_max).toLocaleString() : '—'}{' '}
+                    {profile.salary_currency ?? 'ETB'}
+                  </p>
+                )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
                   {profile.skills.slice(0, 4).map((skill) => (
                     <IonChip key={skill} outline>

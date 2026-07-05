@@ -82,6 +82,42 @@ export function HiringRequestDetailPage() {
     })
   }
 
+  const handleAccept = () => {
+    // Applications: the hirer is accepting, and must set the salary right here —
+    // nothing upstream has one. Invitations already carry a proposed_salary set
+    // by the hirer when the invite was sent, so the employee accepting doesn't
+    // need to input anything.
+    if (request.type !== 'application') {
+      accept.mutate({ id })
+      return
+    }
+
+    void presentAlert({
+      header: 'Accept application',
+      message: 'Enter the salary you\'re offering for this job.',
+      inputs: [
+        {
+          name: 'salary',
+          type: 'number',
+          placeholder: 'Agreed salary (ETB)',
+          value: request.job?.salary_min ?? undefined,
+        },
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Accept',
+          handler: (data: { salary?: string }) => {
+            const salary = Number(data.salary)
+            if (!data.salary || !(salary > 0)) return false
+            accept.mutate({ id, agreedSalary: salary })
+            return true
+          },
+        },
+      ],
+    })
+  }
+
   return (
     <IonPage>
       <IonHeader>
@@ -146,7 +182,7 @@ export function HiringRequestDetailPage() {
 
         {isPending && !sentByMe && isApproved && (
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <IonButton expand="block" disabled={accept.isPending} onClick={() => accept.mutate(id)}>
+            <IonButton expand="block" disabled={accept.isPending} onClick={handleAccept}>
               Accept
             </IonButton>
             <IonButton expand="block" color="danger" fill="outline" disabled={reject.isPending} onClick={handleReject}>

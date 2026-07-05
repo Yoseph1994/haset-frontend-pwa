@@ -29,10 +29,12 @@ export function useAcceptHiringRequest() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: string) => hiringRequestsApi.acceptHiringRequest(id),
+    mutationFn: ({ id, agreedSalary }: { id: string; agreedSalary?: number }) =>
+      hiringRequestsApi.acceptHiringRequest(id, agreedSalary),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hiring-requests'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['offers'] })
     },
   })
 }

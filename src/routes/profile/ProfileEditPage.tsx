@@ -24,16 +24,28 @@ import { useSessionStore } from '@/store/session'
 import { ApiError } from '@/api/client'
 import type { EmployeeProfile, HirerProfile } from '@/api/types'
 
-const employeeSchema = z.object({
-  job_category: z.string().min(1, 'Required').max(80),
-  employment_type: z.enum(['gig', 'permanent', 'both']),
-  availability_status: z.enum(['available', 'assigned', 'on_leave', 'inactive']),
-  skills: z.array(z.string()).min(1, 'Add at least one skill'),
-  languages_spoken: z.array(z.string()).min(1, 'Add at least one language'),
-  bio: z.string().max(2000).optional(),
-  city: z.string().min(1, 'Required').max(100),
-  sub_city: z.string().max(100).optional(),
-})
+const employeeSchema = z
+  .object({
+    job_category: z.string().min(1, 'Required').max(80),
+    employment_type: z.enum(['gig', 'permanent', 'both']),
+    availability_status: z.enum(['available', 'assigned', 'on_leave', 'inactive']),
+    skills: z.array(z.string()).min(1, 'Add at least one skill'),
+    languages_spoken: z.array(z.string()).min(1, 'Add at least one language'),
+    bio: z.string().max(2000).optional(),
+    city: z.string().min(1, 'Required').max(100),
+    sub_city: z.string().max(100).optional(),
+    expected_salary_min: z.union([z.number(), z.literal('')]).optional(),
+    expected_salary_max: z.union([z.number(), z.literal('')]).optional(),
+  })
+  .refine(
+    (data) =>
+      data.expected_salary_min === '' ||
+      data.expected_salary_max === '' ||
+      data.expected_salary_max === undefined ||
+      data.expected_salary_min === undefined ||
+      Number(data.expected_salary_max) >= Number(data.expected_salary_min),
+    { message: 'Maximum must be at least the minimum', path: ['expected_salary_max'] },
+  )
 
 const hirerSchema = z.object({
   description: z.string().max(2000).optional(),
@@ -57,11 +69,24 @@ function EmployeeEditForm({ profile }: { profile: EmployeeProfile }) {
       bio: profile.bio ?? '',
       city: profile.city,
       sub_city: profile.sub_city ?? '',
+      expected_salary_min: profile.expected_salary_min ? Number(profile.expected_salary_min) : '',
+      expected_salary_max: profile.expected_salary_max ? Number(profile.expected_salary_max) : '',
     },
   })
 
+  const onSubmit = (values: z.infer<typeof employeeSchema>) => {
+    update.mutate(
+      {
+        ...values,
+        expected_salary_min: values.expected_salary_min === '' ? null : Number(values.expected_salary_min),
+        expected_salary_max: values.expected_salary_max === '' ? null : Number(values.expected_salary_max),
+      },
+      { onSuccess: () => history.goBack() },
+    )
+  }
+
   return (
-    <form onSubmit={handleSubmit((values) => update.mutate(values, { onSuccess: () => history.goBack() }))}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <IonList inset>
         <FormTextField control={control} name="job_category" label="Job category" />
         <FormSelectField
@@ -89,6 +114,18 @@ function EmployeeEditForm({ profile }: { profile: EmployeeProfile }) {
         <FormTextareaField control={control} name="bio" label="About you" />
         <FormTextField control={control} name="city" label="City" />
         <FormTextField control={control} name="sub_city" label="Sub-city" />
+        <FormTextField
+          control={control}
+          name="expected_salary_min"
+          label="Minimum expected salary (ETB)"
+          type="number"
+        />
+        <FormTextField
+          control={control}
+          name="expected_salary_max"
+          label="Maximum expected salary (ETB)"
+          type="number"
+        />
       </IonList>
 
       {update.isError && (

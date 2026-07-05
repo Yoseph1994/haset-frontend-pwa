@@ -10,6 +10,7 @@ import {
   IonText,
   IonTitle,
   IonToolbar,
+  useIonAlert,
 } from '@ionic/react'
 import { usePublicEmployeeProfile } from '@/hooks/useProfile'
 import { useCreateHiringRequest, useHiringRequests } from '@/hooks/useHiringRequests'
@@ -23,6 +24,7 @@ import { ApiError } from '@/api/client'
 
 export function EmployeePublicProfilePage() {
   const { id = '' } = useRouteParams<{ id: string }>('/app/employees/:id')
+  const [presentAlert] = useIonAlert()
   const { data: profile, isLoading, isError, refetch } = usePublicEmployeeProfile(id)
   const createRequest = useCreateHiringRequest()
   const { data: myRequests } = useHiringRequests()
@@ -31,6 +33,35 @@ export function EmployeePublicProfilePage() {
   const alreadyInvited = myRequests?.data.some(
     (r) => r.employee_id === profile?.user_id && r.type === 'invitation' && r.status === 'pending',
   )
+
+  const handleInvite = () => {
+    if (!profile) return
+
+    void presentAlert({
+      header: 'Invite to a job',
+      message: 'Enter the salary you\'re offering.',
+      inputs: [
+        {
+          name: 'salary',
+          type: 'number',
+          placeholder: 'Offered salary (ETB)',
+          value: profile.expected_salary_min ?? undefined,
+        },
+      ],
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Send invite',
+          handler: (data: { salary?: string }) => {
+            const salary = Number(data.salary)
+            if (!data.salary || !(salary > 0)) return false
+            createRequest.mutate({ type: 'invitation', employee_id: profile.user_id, proposed_salary: salary })
+            return true
+          },
+        },
+      ],
+    })
+  }
 
   return (
     <IonPage>
@@ -89,11 +120,7 @@ export function EmployeePublicProfilePage() {
             {!isApproved && <VerificationBanner action="invite workers" />}
 
             {isApproved && (
-              <IonButton
-                expand="block"
-                disabled={createRequest.isPending || alreadyInvited}
-                onClick={() => createRequest.mutate({ type: 'invitation', employee_id: profile.user_id })}
-              >
+              <IonButton expand="block" disabled={createRequest.isPending || alreadyInvited} onClick={handleInvite}>
                 {alreadyInvited ? 'Invitation sent' : 'Invite to a job'}
               </IonButton>
             )}

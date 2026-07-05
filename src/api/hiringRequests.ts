@@ -22,8 +22,8 @@ export function createHiringRequest(payload: CreateHiringRequestPayload) {
   return unwrap<HiringRequest>(apiClient.post('/hiring-requests', payload))
 }
 
-export function acceptHiringRequest(id: string) {
-  return unwrap<HiringRequest>(apiClient.put(`/hiring-requests/${id}/accept`))
+export function acceptHiringRequest(id: string, agreed_salary?: number) {
+  return unwrap<HiringRequest>(apiClient.put(`/hiring-requests/${id}/accept`, { agreed_salary }))
 }
 
 export function rejectHiringRequest(id: string, rejected_reason?: string) {
